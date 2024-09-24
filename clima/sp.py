@@ -183,7 +183,12 @@ class Sp:
         resultados = cur.fetchall()          
         for resultado in resultados:
             print(resultado)
-            print(resultado[6])
+            umidade_reltiva = (int(resultado[7]) - int(resultado[8]))
+            print(umidade_reltiva)
+            #if(umidade_reltiva < 30):
+                # Envia alerta 
+            #if()
+                
             quit()
 
         
