@@ -1,6 +1,6 @@
 # dash.py
 import requests
-from conn.db_connection import Conexao
+from ..conn.db_connection import Conexao
 from datetime import datetime, timedelta
 
 
@@ -72,6 +72,8 @@ class Sp:
             return dados
         else:
             print(f"Erro ao buscar previsão para geocode {geocode}: {response.status_code}")
+            return {}  # Retorna um dicionário vazio em caso de erro
+
         
     def get_all_geocodes(self):
         try:
@@ -90,23 +92,28 @@ class Sp:
     
 
 
+
     def previsao_para_todas_as_cidades(self):
-        # Obtém todos os geocodes
         geocodes = self.get_all_geocodes()
-        previsoes = []  # Cria uma lista para armazenar as previsões
+        previsoes = []
         ultimos_5_dias = ['manha', 'tarde', 'noite']
 
         if geocodes:
+            hoje = datetime.now()
+            datas = (hoje).strftime('%d/%m/%Y') 
+            print(datas)
             for cidade_nome, geocode in geocodes:
-                data = self.previsao(geocode)  
+                data = self.previsao(geocode)
 
-                for i in range(5):
-                    data_hoje = (datetime.now() + timedelta(days=i)).strftime('%d/%m/%Y')
+                if data is None:  # Verifica se data é None
+                    print(f"Nenhuma previsão encontrada para {cidade_nome} ({geocode}).")
+                    continue  # Pula para a próxima iteração
+
+                for data_hoje in datas:
                     previsao_dia = {'data': data_hoje, 'cidade': cidade_nome, 'previsoes': {}}
-                    
-                    if i < 3:  # Para os primeiros 3 dias
-                        for periodo in ultimos_5_dias:
-                            if (geocode in data and 
+        
+                    for periodo in ultimos_5_dias:
+                        if (geocode in data and 
                                 data_hoje in data[geocode] and 
                                 periodo in data[geocode][data_hoje]):
                                 previsao_dia['previsoes'][periodo] = {
@@ -119,25 +126,9 @@ class Sp:
                                     'umidade_max': data[geocode][data_hoje][periodo]['umidade_max'],
                                     'umidade_min': data[geocode][data_hoje][periodo]['umidade_min'],
                                     'temp_max_tende': data[geocode][data_hoje][periodo]['temp_max_tende']
-                                }
-                    else:  # Para os dias restantes
-                        if geocode in data and data_hoje in data[geocode]:
-                            previsao_dia['previsoes'] = {
-                                'uf': data[geocode][data_hoje]['uf'],
-                                'entidade': data[geocode][data_hoje]['entidade'],
-                                'resumo': data[geocode][data_hoje]['resumo'],
-                                'temp_max': data[geocode][data_hoje]['temp_max'],
-                                'temp_min': data[geocode][data_hoje]['temp_min'],
-                                'int_vento': data[geocode][data_hoje]['int_vento'],
-                                'umidade_max': data[geocode][data_hoje]['umidade_max'],
-                                'umidade_min': data[geocode][data_hoje]['umidade_min'],
-                                'temp_max_tende': data[geocode][data_hoje]['temp_max_tende']
                             }
+                                print(previsao_dia)
+                    previsoes.append(previsao_dia)
 
-                    previsoes.append(previsao_dia)  
+                return {'status': True, 'output': previsoes}
 
-            return {'status': True, 'output' : previsoes}
-
-        else:
-            print("Nenhum geocode encontrado no banco de dados.")
-            return []
