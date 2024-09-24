@@ -17,19 +17,18 @@ CREATE TABLE Usuario (
 
 CREATE TABLE Leitura_Climatica (
     ID_Leitura SERIAL PRIMARY KEY,
-    Data_Hora TIMESTAMPTZ NOT NULL,
-    Precipitação DECIMAL(5, 2),
-    Temperatura DECIMAL(5, 2),
-    Umidade DECIMAL(5, 2),
+    uf TEXT NOT NULL,
+    entidade TEXT,
+    resumo TEXT,
+    temp_max TEXT,
+    temp_min TEXT,
+    int_vento TEXT,
+    umidade_max TEXT,
+    umidade_min TEXT,
+    temp_max_tende TEXT,
+    periodo TEXT,
     ID_Cidade INTEGER REFERENCES Cidade(ID_Cidade) ON DELETE CASCADE
 );
 
 
-CREATE TABLE Alerta_Climatico (
-    ID_Alerta SERIAL PRIMARY KEY,
-    Data_Hora_Emissão TIMESTAMPTZ NOT NULL,
-    Descrição TEXT NOT NULL,
-    Nível_Alerta VARCHAR(50),
-    ID_Cidade INTEGER REFERENCES Cidade(ID_Cidade) ON DELETE CASCADE,
-    ID_Usuario INTEGER REFERENCES Usuario(ID_Usuario) ON DELETE SET NULL
-);
+
