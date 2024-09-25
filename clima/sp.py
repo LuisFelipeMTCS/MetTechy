@@ -2,6 +2,8 @@
 import requests
 from conn.db_connection import Conexao
 from datetime import datetime, timedelta
+import smtplib
+from email.message import EmailMessage
 
 
 class Sp:
@@ -178,18 +180,117 @@ class Sp:
     def getCLimas(self):
 
         cur = self.conn.cursor()
-        query = " SELECT * FROM Leitura_Climatica as leitura; "
+        query = "SELECT * FROM Leitura_Climatica as leitura;"
         cur.execute(query)
-        resultados = cur.fetchall()          
+        resultados = cur.fetchall()
+
+        risco_texto = []  # Lista para armazenar as mensagens de risco
+
         for resultado in resultados:
-            print(resultado)
-            umidade_reltiva = (int(resultado[7]) - int(resultado[8]))
-            print(umidade_reltiva)
-            #if(umidade_reltiva < 30):
-                # Envia alerta 
-            #if()
-                
-            quit()
+            id_leitura = resultado[0]
+            uf = resultado[1]
+            entidade = resultado[2]
+            resumo = resultado[3]
+            temp_max = float(resultado[4])
+            temp_min = float(resultado[5])
+            int_vento = resultado[6]
+            umidade_max = int(resultado[7])
+            umidade_min = int(resultado[8])
+            temp_max_tende = resultado[9]
+            periodo = resultado[10]
+            id_cidade = resultado[11]
+            
+
+
+
+            # Calcula a variação de umidade relativa
+            umidade_relativa = umidade_max - umidade_min
+
+            # Identifica padrões de risco
+            risco_detectado = False
+            detalhes_risco = []
+
+            # 1. Risco de calor extremo
+            if temp_max >= 35:
+                risco_detectado = True
+                detalhes_risco.append(f"Calor extremo: {temp_max}°C")
+
+            # 2. Risco de frio extremo
+            if temp_min <= 5:
+                risco_detectado = True
+                detalhes_risco.append(f"Frio extremo: {temp_min}°C")
+
+            # 3. Risco de ventos fortes
+            if str(int_vento).lower() == 'forte':
+                risco_detectado = True
+                detalhes_risco.append(f"Ventos fortes: {int_vento}")
+
+            # 4. Risco por umidade extrema
+            if umidade_max >= 90 or umidade_min <= 20:
+                risco_detectado = True
+                detalhes_risco.append(f"Umidade extrema (Máx: {umidade_max}%, Mín: {umidade_min}%)")
+
+            # 5. Risco de tendência de calor
+            if str(temp_max_tende).lower() == 'em elevação':
+                risco_detectado = True
+                detalhes_risco.append(f"Tendência de calor: {temp_max_tende}")
+
+            # Montar o texto do risco
+            if risco_detectado:
+                texto_risco = (
+                    f"⚠️ Risco detectado para a cidade {id_cidade} (Entidade: {entidade}, UF: {uf}):\n"
+                    f"- Período: {periodo}\n"
+                    f"- Detalhes: {', '.join(detalhes_risco)}\n"
+                    f"{'-' * 50}\n"
+                )
+            else:
+                texto_risco = (
+                    f"Sem riscos significativos para a leitura {id_leitura} no período {periodo}.\n"
+                    f"{'-' * 50}\n"
+                )
+
+            # Adiciona o texto à lista incremental
+            risco_texto.append(texto_risco)
+            
+            
+            query = "SELECT id_usuario, nome, email, telefone, id_cidade FROM public.usuario;"
+            cur.execute(query)
+            
+            # Buscar todos os resultados
+            usuarios = cur.fetchall()
+            
+            for usuario in usuarios:
+                if usuario[4] == id_cidade:
+                    nome_usuario = usuario[1]
+                    email_usuario = usuario[2]
+                    print(f"Enviando email para {nome_usuario} (Email: {email_usuario})...")
+
+                    # Enviar email
+                    self.enviar_email(email_usuario, nome_usuario, texto_risco)
+                    
+        # Fecha o cursor
+        cur.close()
+
+    def enviar_email(self, destinatario, nome_usuario, mensagem_risco):
+        try:
+            # Configurar o email
+            msg = EmailMessage()
+            msg.set_content(f"Olá {nome_usuario},\n\n{mensagem_risco}")
+            msg['Subject'] = 'Alerta Climático'
+            msg['From'] = 'email'
+            msg['To'] = destinatario
+
+            # Enviar o email
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:  # Use o servidor SMTP do Gmail
+                smtp.login('Seu_email', 'Senha')  # Use a senha do aplicativo se necessário
+                smtp.send_message(msg)
+
+            print(f"Email enviado para {nome_usuario} ({destinatario}).")
+        
+        except Exception as e:
+            print(f"Erro ao enviar o email para {destinatario}: {e}")
+
+
 
         
 
